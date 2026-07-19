@@ -1,0 +1,6 @@
+{
+  "name": "EasyEarnBD",
+  "description": "An interactive and beautifully designed Telegram Web App game where users play Image Finder, Tic-Tac-Toe, Math Solvers, and Spin-to-Win games to earn rewards, complete withdrawal requests, and invite friends.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
