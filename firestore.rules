@@ -1,0 +1,146 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Central Security Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == "ibrahim9182882@gmail.com";
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Blueprints (Pillar 2)
+    function isValidGlobalSettings(data) {
+      return data.keys().hasAll(['coinValue', 'paymentMethods', 'gameReward', 'tttReward', 'mathReward', 'referralBonus', 'signupBonus', 'minWithdraw'])
+        && data.coinValue is string
+        && data.coinValue.size() <= 32
+        && data.paymentMethods is list
+        && data.gameReward is int
+        && data.tttReward is int
+        && data.mathReward is int
+        && data.referralBonus is int
+        && data.signupBonus is int
+        && data.minWithdraw is int;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'telegramId', 'firstName', 'balance', 'referralCode', 'totalEarned', 'totalRefers'])
+        && data.uid is string
+        && data.uid.size() <= 128
+        && data.telegramId is string
+        && data.telegramId.size() <= 128
+        && data.firstName is string
+        && data.firstName.size() <= 128
+        && data.balance is int
+        && data.referralCode is string
+        && data.referralCode.size() <= 32
+        && data.totalEarned is int
+        && data.totalRefers is int;
+    }
+
+    function isValidEarningRecord(data) {
+      return data.keys().hasAll(['amount', 'source', 'timestamp'])
+        && data.amount is int
+        && data.source is string
+        && data.source.size() <= 128;
+    }
+
+    function isValidWithdrawalRecord(data) {
+      return data.keys().hasAll(['userId', 'userName', 'amount', 'method', 'details', 'status', 'refundProcessed', 'timestamp'])
+        && data.userId is string
+        && data.userId.size() <= 128
+        && data.userName is string
+        && data.userName.size() <= 128
+        && data.amount is int
+        && data.method is string
+        && data.method.size() <= 64
+        && data.details is string
+        && data.details.size() <= 512
+        && data.status is string
+        && data.status.size() <= 32
+        && data.refundProcessed is bool;
+    }
+
+    function isValidReferralCodeMapping(data) {
+      return data.keys().hasAll(['userId'])
+        && data.userId is string
+        && data.userId.size() <= 128;
+    }
+
+    // Collection Group rule for profile collection group query (Admin only)
+    match /{path=**}/profile/{docId} {
+      allow read: if isAdmin();
+    }
+
+    // Root Artifact Container Mapping
+    match /artifacts/easybd-2fc02 {
+      
+      // Global settings
+      match /public/data/settings/global {
+        allow read: if isSignedIn();
+        allow create, update: if isAdmin() || (isSignedIn() && isValidGlobalSettings(incoming()));
+      }
+
+      // Referral codes mapping registry
+      match /public/data/referralCodes/{referralCode} {
+        allow read: if isSignedIn() && isValidId(referralCode);
+        allow create, update: if isAdmin() || (isSignedIn() && isValidId(referralCode) && isValidReferralCodeMapping(incoming()) && incoming().userId == request.auth.uid);
+      }
+
+      // User Profiles (Pillar 6)
+      match /users/{userId}/profile/main {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow delete: if isAdmin();
+        allow update: if isAdmin() || (isSignedIn() && isValidUserProfile(incoming()) && (
+          // Action 1: Owner updating their own profile
+          isOwner(userId) ||
+          // Action 2: Referee updating referrer's profile fields on dynamic rewards
+          (incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'totalEarned', 'totalRefers']))
+        ));
+      }
+
+      // Earnings subcollection (Pillar 1)
+      match /users/{userId}/earnings/{earningId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin() || (isSignedIn() && isValidId(earningId) && isValidEarningRecord(incoming()) && (
+          // Case 1: Owner logging their earnings
+          isOwner(userId) ||
+          // Case 2: Referee logging an earning entry for their referrer
+          (incoming().amount > 0)
+        ));
+      }
+
+      // Withdrawals collection (Pillar 8)
+      match /public/data/withdrawals/{withdrawalId} {
+        allow read, list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+        allow create: if isAdmin() || (isSignedIn() && isValidId(withdrawalId) && isValidWithdrawalRecord(incoming()) && incoming().userId == request.auth.uid);
+        allow update: if isAdmin() || (isSignedIn() && isValidId(withdrawalId) && isValidWithdrawalRecord(incoming()) && resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['refundProcessed']));
+        allow delete: if isAdmin();
+      }
+    }
+  }
+}
