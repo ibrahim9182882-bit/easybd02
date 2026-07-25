@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "GlobalSettings": {
+      "title": "GlobalSettings",
+      "description": "Global application configuration for reward settings, coin value, and payment parameters.",
+      "type": "object",
+      "properties": {
+        "coinValue": { "type": "string", "maxLength": 32 },
+        "paymentMethods": { "type": "array" },
+        "gameReward": { "type": "integer" },
+        "tttReward": { "type": "integer" },
+        "mathReward": { "type": "integer" },
+        "referralBonus": { "type": "integer" },
+        "signupBonus": { "type": "integer" },
+        "minWithdraw": { "type": "integer" },
+        "socials": { "type": "object" }
+      },
+      "required": ["coinValue", "paymentMethods", "gameReward", "tttReward", "mathReward", "referralBonus", "signupBonus", "minWithdraw"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "The primary profile for each user tracking balance, credentials, and referral counts.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "telegramId": { "type": "string", "maxLength": 128 },
+        "firstName": { "type": "string", "maxLength": 128 },
+        "balance": { "type": "integer" },
+        "referralCode": { "type": "string", "maxLength": 32 },
+        "totalEarned": { "type": "integer" },
+        "totalRefers": { "type": "integer" },
+        "referredBy": { "type": "string", "maxLength": 32 },
+        "photoUrl": { "type": "string", "maxLength": 1024 }
+      },
+      "required": ["uid", "telegramId", "firstName", "balance", "referralCode", "totalEarned", "totalRefers"]
+    },
+    "EarningRecord": {
+      "title": "EarningRecord",
+      "description": "An entry representing reward coins earned by playing games or referrals.",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "integer" },
+        "source": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "object" }
+      },
+      "required": ["amount", "source", "timestamp"]
+    },
+    "WithdrawalRecord": {
+      "title": "WithdrawalRecord",
+      "description": "A record representing a user's withdrawal request.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "integer" },
+        "method": { "type": "string", "maxLength": 64 },
+        "details": { "type": "string", "maxLength": 512 },
+        "status": { "type": "string", "maxLength": 32 },
+        "refundProcessed": { "type": "boolean" },
+        "timestamp": { "type": "object" }
+      },
+      "required": ["userId", "userName", "amount", "method", "details", "status", "refundProcessed", "timestamp"]
+    },
+    "ReferralCodeMapping": {
+      "title": "ReferralCodeMapping",
+      "description": "A lookup collection mapped by code pointing to the owner's uid.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "artifacts/easybd-2fc02/public/data/settings/global": {
+      "schema": "GlobalSettings",
+      "description": "Global configurations."
+    },
+    "artifacts/easybd-2fc02/users/{userId}/profile/main": {
+      "schema": "UserProfile",
+      "description": "Central user wallets and stats."
+    },
+    "artifacts/easybd-2fc02/users/{userId}/earnings/{earningId}": {
+      "schema": "EarningRecord",
+      "description": "Gameplay earning audit logs."
+    },
+    "artifacts/easybd-2fc02/public/data/withdrawals/{withdrawalId}": {
+      "schema": "WithdrawalRecord",
+      "description": "Withdrawals registry."
+    },
+    "artifacts/easybd-2fc02/public/data/referralCodes/{referralCode}": {
+      "schema": "ReferralCodeMapping",
+      "description": "Lookup registry for referral codes."
+    }
+  }
+}
